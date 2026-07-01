@@ -153,8 +153,16 @@ or developing it. Edits to the folder take effect after `/reload-plugins`.
    ```
 2. **Open the project root** in Claude Code — the folder containing `pubspec.yaml` (usually
    next to `analysis_options.yaml`, `lib/`, `test/`).
-3. **Open a `.dart` file.** Claude Code starts the Dart Analysis Server through `bin/dart-lsp`
-   and code intelligence becomes available.
+3. **Open or edit a `.dart` file.** That file activity is what starts the Dart Analysis
+   Server through `bin/dart-lsp`. The first analysis on a large project can take a few seconds.
+
+> **When code intelligence turns on.** The language server starts on `.dart` **file
+> activity** — not the moment the session opens. Until it's running, Claude Code has no LSP
+> results yet and may fall back to plain text search (grep) for navigation. Opening or
+> editing a `.dart` file warms it up; after that, diagnostics arrive automatically and the
+> `LSP` operations (hover, definition, references, symbols, call hierarchy) work. This is
+> Claude Code behavior, not a plugin setting — if navigation seems to "miss," touch a
+> `.dart` file first.
 
 ### `pub get` is required
 
