@@ -61,17 +61,18 @@ the app.
 
 ## What you get
 
-Once enabled, opening a Dart/Flutter project gives Claude Code:
+Once enabled, opening a Dart/Flutter project gives Claude Code exactly this surface:
 
-- 🔎 **Diagnostics** — errors, warnings, and lints, **pushed into context automatically** after each edit (no tool call needed)
-- 🧠 **Hover** — types and docs at a position
-- ↪️ **Go to definition** and **go to implementation**
-- 🔗 **Find references** — every usage of a symbol
-- 🗂️ **Document symbols** and **workspace symbol** search
-- 📞 **Call hierarchy** — incoming/outgoing calls
+- 🔎 **Diagnostics** — errors, warnings, and lints, **pushed into context automatically**
+  after each edit (this is not an `LSP` operation — it arrives without a tool call)
+- 🧠 **Hover** (`hover`) — types and docs at a position
+- ↪️ **Go to definition** (`goToDefinition`) and **go to implementation** (`goToImplementation`)
+- 🔗 **Find references** (`findReferences`) — every usage of a symbol
+- 🗂️ **Document symbols** (`documentSymbol`) and **workspace symbol** search (`workspaceSymbol`)
+- 📞 **Call hierarchy** (`prepareCallHierarchy`, `incomingCalls`, `outgoingCalls`)
 
-The nine navigation operations above are reached through Claude Code's built‑in `LSP`
-tool; diagnostics arrive automatically.
+Those are the **nine** operations Claude Code's built‑in `LSP` tool exposes; diagnostics
+are delivered automatically on top.
 
 > **What Claude Code doesn't expose (yet).** The Dart server *also* supports **rename**,
 > **code actions / quick‑fixes**, and **signature help**, but Claude Code's `LSP` tool
