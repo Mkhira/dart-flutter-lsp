@@ -1,0 +1,19 @@
+{
+  "dart": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/dart-lsp",
+    "args": [],
+    "extensionToLanguage": {
+      ".dart": "dart"
+    },
+    "startupTimeout": 30000,
+    "maxRestarts": 5,
+    "diagnostics": true,
+    "initializationOptions": {
+      "onlyAnalyzeProjectsWithOpenFiles": false,
+      "suggestFromUnimportedLibraries": true,
+      "closingLabels": true,
+      "outline": true,
+      "flutterOutline": true
+    }
+  }
+}

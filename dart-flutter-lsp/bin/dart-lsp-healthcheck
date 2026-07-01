@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+#
+# dart-lsp-healthcheck — human-readable diagnostic report for the
+# dart-flutter-lsp plugin. Unlike bin/dart-lsp, this is NOT an LSP transport
+# process, so it is free to print to stdout.
+#
+# Run it from your Dart/Flutter project root for the most useful report:
+#   dart-lsp-healthcheck
+
+set -uo pipefail
+
+# --- pretty output ----------------------------------------------------------
+
+if [ -t 1 ]; then
+  G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; B=$'\033[1m'; N=$'\033[0m'
+else
+  G=""; R=""; Y=""; B=""; N=""
+fi
+
+ok()   { printf '  %s✓%s %s\n' "$G" "$N" "$*"; }
+bad()  { printf '  %s✗%s %s\n' "$R" "$N" "$*"; }
+warn() { printf '  %s!%s %s\n' "$Y" "$N" "$*"; }
+info() { printf '    %s\n' "$*"; }
+section() { printf '\n%s%s%s\n' "$B" "$*" "$N"; }
+
+# Locate the sibling launcher regardless of where this script is invoked from.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+DART_LSP="$SCRIPT_DIR/dart-lsp"
+
+printf '%sdart-flutter-lsp — health check%s\n' "$B" "$N"
+printf 'plugin bin : %s\n' "$SCRIPT_DIR"
+printf 'project cwd: %s\n' "$(pwd)"
+
+# --- environment variables --------------------------------------------------
+
+section "Environment"
+if [ -n "${DART_SDK:-}" ]; then ok "DART_SDK set: $DART_SDK"; else warn "DART_SDK not set (optional)"; fi
+if [ -n "${FLUTTER_ROOT:-}" ]; then ok "FLUTTER_ROOT set: $FLUTTER_ROOT"; else warn "FLUTTER_ROOT not set (optional)"; fi
+if [ "${DART_FLUTTER_LSP_DEBUG:-}" = "1" ]; then info "DART_FLUTTER_LSP_DEBUG=1 (debug logging enabled)"; fi
+
+# --- toolchain on PATH ------------------------------------------------------
+
+section "Toolchain on PATH"
+DART_ON_PATH=""
+FLUTTER_ON_PATH=""
+if command -v dart >/dev/null 2>&1; then DART_ON_PATH="$(command -v dart)"; ok "dart found: $DART_ON_PATH"; else bad "dart not on PATH"; fi
+if command -v flutter >/dev/null 2>&1; then FLUTTER_ON_PATH="$(command -v flutter)"; ok "flutter found: $FLUTTER_ON_PATH"; else warn "flutter not on PATH (fine for pure-Dart projects)"; fi
+
+# --- selected Dart executable (mirror bin/dart-lsp discovery) ---------------
+
+section "Selected Dart executable"
+SELECTED_DART=""
+SELECTED_FLUTTER_ROOT=""
+if [ -n "${DART_SDK:-}" ] && [ -x "$DART_SDK/bin/dart" ]; then
+  SELECTED_DART="$DART_SDK/bin/dart"; info "via DART_SDK"
+elif [ -n "${FLUTTER_ROOT:-}" ] && [ -x "$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart" ]; then
+  SELECTED_DART="$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart"; SELECTED_FLUTTER_ROOT="$FLUTTER_ROOT"; info "via FLUTTER_ROOT (bundled dart)"
+elif [ -n "${FLUTTER_ROOT:-}" ] && [ -x "$FLUTTER_ROOT/bin/dart" ]; then
+  SELECTED_DART="$FLUTTER_ROOT/bin/dart"; SELECTED_FLUTTER_ROOT="$FLUTTER_ROOT"; info "via FLUTTER_ROOT (dart shim)"
+elif [ -n "$DART_ON_PATH" ]; then
+  SELECTED_DART="$DART_ON_PATH"; info "via PATH"
+elif [ -n "$FLUTTER_ON_PATH" ]; then
+  froot="$(cd "$(dirname "$FLUTTER_ON_PATH")/.." >/dev/null 2>&1 && pwd)"
+  if [ -x "$froot/bin/cache/dart-sdk/bin/dart" ]; then
+    SELECTED_DART="$froot/bin/cache/dart-sdk/bin/dart"; SELECTED_FLUTTER_ROOT="$froot"; info "via flutter -> bundled dart"
+  fi
+fi
+
+if [ -n "$SELECTED_DART" ]; then
+  ok "selected: $SELECTED_DART"
+  info "$("$SELECTED_DART" --version 2>&1 | head -1)"
+else
+  bad "no usable Dart executable resolved — the LSP server will not start"
+fi
+
+# --- Flutter details --------------------------------------------------------
+
+section "Flutter"
+if [ -n "$SELECTED_FLUTTER_ROOT" ]; then ok "Flutter SDK root: $SELECTED_FLUTTER_ROOT"; fi
+if [ -n "$FLUTTER_ON_PATH" ]; then
+  ok "flutter executable: $FLUTTER_ON_PATH"
+  info "$("$FLUTTER_ON_PATH" --version 2>&1 | head -1)"
+else
+  warn "flutter not available (only needed for Flutter projects)"
+fi
+
+# --- launcher --------------------------------------------------------------
+
+section "Launcher (bin/dart-lsp)"
+if [ -f "$DART_LSP" ]; then
+  ok "exists: $DART_LSP"
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) info "Windows shell detected — executable bit not applicable; use bin/dart-lsp.cmd" ;;
+    *) if [ -x "$DART_LSP" ]; then ok "executable bit set"; else bad "NOT executable — run: chmod +x \"$DART_LSP\""; fi ;;
+  esac
+else
+  bad "missing: $DART_LSP"
+fi
+
+# --- project context --------------------------------------------------------
+
+section "Project context (cwd)"
+if [ -f pubspec.yaml ]; then ok "pubspec.yaml present"; else warn "no pubspec.yaml in cwd — open the project ROOT for best analysis"; fi
+if [ -f .dart_tool/package_config.json ]; then
+  ok ".dart_tool/package_config.json present (packages resolved)"
+else
+  warn ".dart_tool/package_config.json missing — run 'dart pub get' (or 'flutter pub get')"
+fi
+if [ -f analysis_options.yaml ]; then ok "analysis_options.yaml present"; else info "no analysis_options.yaml (optional; enables custom lints)"; fi
+
+# --- can the language server start? -----------------------------------------
+
+section "Language server startup"
+if [ -n "$SELECTED_DART" ]; then
+  # Probe the subcommand's help; this exercises the same binary/subcommand
+  # without opening a long-lived stdio session.
+  if "$SELECTED_DART" language-server --help >/dev/null 2>&1; then
+    ok "'dart language-server' is startable"
+  else
+    # Older SDKs may not support --help on the subcommand; fall back to a check
+    # that the subcommand at least exists.
+    if "$SELECTED_DART" help language-server >/dev/null 2>&1; then
+      ok "'dart language-server' subcommand available"
+    else
+      bad "'dart language-server' did not respond — check your Dart SDK version (need a recent stable SDK)"
+    fi
+  fi
+else
+  bad "skipped — no Dart executable to test"
+fi
+
+section "Done"
+info "If anything above is red, see the plugin README 'Troubleshooting' section."
+printf '\n'

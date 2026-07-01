@@ -1,0 +1,20 @@
+{
+  "name": "dart-flutter-lsp",
+  "displayName": "Dart & Flutter LSP",
+  "version": "0.1.0",
+  "description": "Connects Claude Code to the official Dart Analysis Server LSP for Dart and Flutter projects.",
+  "author": {
+    "name": "Mohamed khira"
+  },
+  "homepage": "https://github.com/Mkhira/dart-flutter-lsp",
+  "repository": "https://github.com/Mkhira/dart-flutter-lsp",
+  "keywords": [
+    "dart",
+    "flutter",
+    "lsp",
+    "language-server",
+    "analysis-server"
+  ],
+  "license": "MIT",
+  "lspServers": "./.lsp.json"
+}

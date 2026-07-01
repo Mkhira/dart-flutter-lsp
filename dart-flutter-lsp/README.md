@@ -1,0 +1,344 @@
+# Dart & Flutter LSP
+
+A thin [Claude Code](https://code.claude.com) plugin that connects Claude Code to the
+**official Dart Analysis Server** over the Language Server Protocol (LSP), for both
+pure‑Dart and Flutter projects.
+
+This plugin does **not** implement a Dart parser, analyzer, type checker, formatter, or
+completion engine. All code intelligence comes from the official server you already have,
+started via:
+
+```bash
+dart language-server
+```
+
+Flutter code is Dart code using the Flutter framework, and the Dart Analysis Server already
+understands Flutter. There is no separate "Flutter LSP" — this plugin simply launches the
+official server and wires it into Claude Code for `.dart` files.
+
+## What you get
+
+Once the plugin is enabled and you open a Dart/Flutter project, Claude Code can use LSP for:
+
+- diagnostics (errors, warnings, lints)
+- hover / type information
+- go to definition
+- find references
+- document symbols
+- workspace symbols (where Claude Code exposes them)
+- code actions (where Claude Code exposes them)
+
+> **LSP vs MCP** — LSP is *code intelligence*; MCP is *agent tools/actions*. This plugin is
+> LSP‑only. Dart/Flutter also offer an MCP server for tooling/package workflows
+> (<https://dart.dev/tools/mcp-server>) — that is optional and separate from this plugin.
+
+## Requirements
+
+- **Claude Code** — `displayName` shows in the UI on v2.1.143+; the plugin itself works on
+  earlier versions (it falls back to the plugin `name`).
+- A **Dart SDK** (standalone) *or* a **Flutter SDK** (which bundles Dart).
+  - Standalone Dart: <https://dart.dev/get-dart>
+  - Flutter: <https://docs.flutter.dev/get-started/install>
+- A recent stable SDK. The plugin was verified against Dart 3.12 / Flutter 3.44.
+
+Verify your toolchain any time with the bundled health check (see [Testing](#testing)).
+
+## Installation (local development)
+
+This is built as a **local development plugin** first — no marketplace required.
+
+### Option A — load a checked‑out folder (recommended for hacking on it)
+
+From the directory that contains the `dart-flutter-lsp/` folder:
+
+```bash
+claude --plugin-dir ./dart-flutter-lsp
+```
+
+This loads the plugin for the session directly from the folder. `${CLAUDE_PLUGIN_ROOT}` in
+`.lsp.json` resolves to the folder, so the bundled launcher is found automatically.
+
+### Option B — skills‑directory plugin via `claude plugin init`
+
+You can scaffold a skills‑directory plugin and drop these files into it:
+
+```bash
+claude plugin init dart-flutter-lsp --with lsp
+```
+
+That creates `~/.claude/skills/dart-flutter-lsp/` and loads it as
+`dart-flutter-lsp@skills-dir`. Replace the generated `.lsp.json`, `plugin.json`, and `bin/`
+with the ones from this repository (keep the executable bits — see below).
+
+> After changing plugin files (hooks, MCP, LSP config, launchers), run `/reload-plugins` in
+> Claude Code or restart the session so changes are picked up.
+
+### Option C — install from a marketplace
+
+This repository ships a marketplace manifest at
+[`../.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) (one level up
+from this plugin folder), so the plugin can be installed like any other:
+
+```bash
+# from the marketplace root (the folder that CONTAINS dart-flutter-lsp/)
+claude plugin marketplace add ./
+claude plugin install dart-flutter-lsp@dart-flutter-marketplace
+```
+
+The plugin installs at **user scope** and is enabled immediately. Manage it with:
+
+```bash
+claude plugin list                                     # see status
+claude plugin uninstall dart-flutter-lsp@dart-flutter-marketplace
+claude plugin marketplace remove dart-flutter-marketplace
+```
+
+> **Publishing to a git host.** A relative `"source": "./dart-flutter-lsp"` works for a
+> local directory marketplace and for a marketplace users clone. If you instead want users
+> to add it by URL, change the plugin `source` in `marketplace.json` to a `github` /
+> `url` / `git-subdir` object and set the marketplace `owner` (and ideally `repository`)
+> fields before publishing. See the Claude Code
+> [plugin-marketplaces docs](https://code.claude.com/docs/en/plugin-marketplaces).
+
+### POSIX executable bits
+
+The launchers in `bin/` must be executable on macOS/Linux:
+
+```bash
+chmod +x bin/dart-lsp bin/dart-lsp-healthcheck
+```
+
+If you cloned/copied the folder and executability was lost, the health check will flag it.
+
+## Usage
+
+1. **Run pub get** in your project first (critical — see below):
+
+   ```bash
+   dart pub get      # pure-Dart project
+   flutter pub get   # Flutter project
+   ```
+
+2. **Open the project root** in Claude Code — the folder that contains `pubspec.yaml`
+   (usually alongside `analysis_options.yaml`, `lib/`, `test/`).
+
+3. Open a `.dart` file. Claude Code starts the Dart Analysis Server through
+   `bin/dart-lsp`, and LSP features become available.
+
+### `pub get` is required
+
+The Dart analyzer resolves packages through `.dart_tool/package_config.json`, which is
+generated by `pub get`. **Without it, imports and diagnostics will be noisy or wrong.**
+Re‑run `pub get` after changing dependencies in `pubspec.yaml`.
+
+### Generated code (`*.g.dart`, `*.freezed.dart`, …)
+
+Many Dart/Flutter projects depend on generated files such as:
+
+```text
+*.g.dart        *.freezed.dart      *.gr.dart       *.config.dart
+```
+
+This plugin **does not generate code**. If diagnostics complain about missing generated
+symbols, run your project's existing generator — commonly:
+
+```bash
+dart run build_runner build
+# or, in older Flutter setups:
+flutter pub run build_runner build
+```
+
+Use whatever command your project already uses; do not expect the LSP wrapper to run it.
+
+## How it works
+
+```text
+Claude Code  ──LSP/stdio──▶  bin/dart-lsp  ──exec──▶  dart language-server
+                                  │
+                                  └─ finds a usable Dart SDK, then hands the
+                                     process over to the Dart Analysis Server
+```
+
+- `.claude-plugin/plugin.json` — the plugin manifest; points `lspServers` at `.lsp.json`.
+- `.lsp.json` — maps `.dart` files to the `dart` language server and launches it via
+  `${CLAUDE_PLUGIN_ROOT}/bin/dart-lsp`.
+- `bin/dart-lsp` — POSIX launcher: discovers a Dart SDK, then `exec`s
+  `dart language-server` so the Dart process *becomes* the LSP process.
+- `bin/dart-lsp.cmd` — Windows launcher (see [Windows](#windows-support)).
+- `bin/dart-lsp-healthcheck` — prints a diagnostic report (safe to run anytime).
+
+### SDK discovery order
+
+`bin/dart-lsp` looks for a Dart executable in this order and uses the first hit:
+
+1. `$DART_SDK/bin/dart` (if `DART_SDK` is set)
+2. `$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart` (if `FLUTTER_ROOT` is set)
+3. `dart` on `PATH`
+4. `flutter` on `PATH` → its bundled Dart SDK
+5. Common install locations (`~/flutter`, `~/development/flutter`, `~/src/flutter`,
+   `~/fvm/default`, `/opt/flutter`, `/usr/local/flutter`, …)
+
+If none are found, it prints a clear message **to stderr** and exits non‑zero.
+
+> **LSP transport rule:** `stdout` is reserved for LSP protocol messages only. All logs,
+> debug output, and errors from the launcher go to `stderr`.
+
+### Tuning `initializationOptions`
+
+`.lsp.json` passes a few Dart‑specific options. They are safe defaults but tunable:
+
+```jsonc
+"initializationOptions": {
+  "onlyAnalyzeProjectsWithOpenFiles": false, // full-workspace analysis
+  "suggestFromUnimportedLibraries": true,
+  "closingLabels": true,
+  "outline": true,
+  "flutterOutline": true
+}
+```
+
+For **very large monorepos**, set `onlyAnalyzeProjectsWithOpenFiles` to `true` if
+full‑workspace analysis is too expensive.
+
+## Debug mode
+
+Set `DART_FLUTTER_LSP_DEBUG=1` to log discovery details **to stderr** (never stdout):
+
+- the selected Dart executable
+- the selected Flutter SDK root (when applicable)
+- the current working directory
+- the exact command being executed
+- each discovery attempt
+
+Example (drives the launcher directly, outside Claude Code):
+
+```bash
+DART_FLUTTER_LSP_DEBUG=1 ./bin/dart-lsp < /dev/null
+```
+
+You will see `[dart-lsp][debug] …` lines on stderr describing discovery.
+
+## Testing
+
+### Health check
+
+Run the bundled health check from your **project root**:
+
+```bash
+./bin/dart-lsp-healthcheck
+# or, when the plugin is enabled, from any Bash tool call:
+dart-lsp-healthcheck
+```
+
+> The command is deliberately named `dart-lsp-healthcheck` (not `healthcheck`): plugin
+> `bin/` files are added to the Bash tool's `PATH` while the plugin is enabled, so a
+> generic name would risk collisions.
+
+It reports:
+
+- whether `DART_SDK` / `FLUTTER_ROOT` are set
+- whether `dart` / `flutter` are on `PATH`
+- the selected Dart executable and `dart --version`
+- the selected Flutter root and `flutter --version` (if available)
+- whether `bin/dart-lsp` exists and is executable (POSIX)
+- whether the cwd has `pubspec.yaml`, `.dart_tool/package_config.json`, `analysis_options.yaml`
+- whether `dart language-server` appears startable
+
+### Manual smoke test
+
+A ready-made project lives in [`examples/smoke_test/`](examples/smoke_test/):
+
+```bash
+cd examples/smoke_test
+dart pub get
+../../bin/dart-lsp-healthcheck
+```
+
+Then open that folder as the project root in Claude Code:
+
+- `lib/calculator.dart` is clean — no diagnostics; try hover / go‑to‑definition / references.
+- `lib/diagnostics_demo.dart` is intentionally broken — expect several diagnostics
+  (type error, undefined name, missing semicolon, unresolved import, plus a lint).
+
+See [`examples/smoke_test/README.md`](examples/smoke_test/README.md) for details, including
+a before/after `pub get` comparison.
+
+### Validate the plugin
+
+```bash
+claude plugin validate ./dart-flutter-lsp
+```
+
+Reports unrecognized fields as warnings. Add `--strict` to fail on warnings.
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+| --- | --- |
+| "No usable Dart SDK found" on stderr | Dart/Flutter not installed or not discoverable. Install Dart or Flutter, or set `DART_SDK`/`FLUTTER_ROOT`, or add `dart` to `PATH`. Re‑run the health check. |
+| Noisy/incorrect import errors | Run `dart pub get` / `flutter pub get`; make sure `.dart_tool/package_config.json` exists. |
+| "Undefined" errors for generated symbols | Run your generator, e.g. `dart run build_runner build`. |
+| No diagnostics at all | You may have opened a subfolder instead of the project root (the folder with `pubspec.yaml`). Reopen the correct root. |
+| LSP handshake looks corrupted | Something wrote to stdout. Only the Dart server should write to stdout; if you customized the launcher, keep all logging on stderr. |
+| Launcher "permission denied" | `chmod +x bin/dart-lsp bin/dart-lsp-healthcheck`. |
+| Flutter installed but Dart not found | Run `flutter doctor` once so Flutter populates `bin/cache/dart-sdk`. |
+| Changes to plugin files not taking effect | Run `/reload-plugins` or restart Claude Code. |
+
+Enable `DART_FLUTTER_LSP_DEBUG=1` and re‑run to see the discovery trace on stderr.
+
+## Monorepos
+
+In a monorepo, each Dart package typically has its own `pubspec.yaml`. Analysis quality
+depends on opening the **correct workspace root** for the package you're editing. Run
+`pub get` in each package you work in. For very large workspaces, consider setting
+`onlyAnalyzeProjectsWithOpenFiles: true` in `.lsp.json` (see [Tuning](#tuning-initializationoptions)).
+
+## Windows support
+
+Windows support is **best‑effort for v0.1**.
+
+- A `bin/dart-lsp.cmd` launcher is provided with the same SDK discovery logic.
+- **Caveat:** `.lsp.json` sets `command` to `${CLAUDE_PLUGIN_ROOT}/bin/dart-lsp` (no
+  extension). Whether Claude Code on Windows resolves that to `dart-lsp.cmd` depends on the
+  platform's command resolution. Before declaring Windows support for your setup, verify
+  that opening a `.dart` file actually starts the server on Windows; if it does not, point
+  `command` at `bin/dart-lsp.cmd` explicitly in your local copy.
+
+Contributions to harden Windows support are welcome.
+
+## Scope — what this plugin does *not* do
+
+By design, it does **not** include:
+
+- a custom Dart parser, analyzer, type checker, formatter, or completion engine
+- a daemon that proxies/mutates LSP messages
+- code/asset generators (`build_runner`, etc.)
+- project‑specific Riverpod/Bloc/Freezed logic
+
+The Dart Analysis Server is the single source of truth. The plugin's only job is to make
+that official server easy, reliable, and debuggable inside Claude Code.
+
+## File structure
+
+```text
+dart-flutter-lsp/
+  .claude-plugin/
+    plugin.json          # manifest (name, displayName, version, lspServers)
+  .lsp.json              # LSP server config: .dart -> dart language server
+  bin/
+    dart-lsp             # POSIX launcher (SDK discovery + exec)
+    dart-lsp.cmd         # Windows launcher
+    dart-lsp-healthcheck # diagnostic report
+  README.md
+```
+
+## Reference
+
+- Claude Code plugins reference — <https://code.claude.com/docs/en/plugins-reference>
+- Dart tools — <https://dart.dev/tools>
+- Dart LSP (analysis server) — <https://github.com/dart-lang/sdk/blob/main/pkg/analysis_server/tool/lsp_spec/README.md>
+- Dart & Flutter MCP server — <https://dart.dev/tools/mcp-server>
+
+## License
+
+MIT

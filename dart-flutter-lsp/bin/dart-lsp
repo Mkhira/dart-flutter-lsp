@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#
+# dart-lsp — SDK discovery wrapper that launches the official Dart Analysis
+# Server over LSP (stdio) for Claude Code.
+#
+# LSP transport rule: stdout is reserved EXCLUSIVELY for LSP protocol messages.
+# Every log/diagnostic/error line this script emits MUST go to stderr, or the
+# LSP handshake with Claude Code will be corrupted.
+#
+# Debug: set DART_FLUTTER_LSP_DEBUG=1 to log discovery details to stderr.
+
+set -euo pipefail
+
+CLIENT_ID="claude-code.dart-flutter-lsp"
+CLIENT_VERSION="0.1.0"
+
+# --- logging helpers (stderr only) -----------------------------------------
+
+log()   { printf '[dart-lsp] %s\n' "$*" >&2; }
+debug() { [ "${DART_FLUTTER_LSP_DEBUG:-}" = "1" ] && printf '[dart-lsp][debug] %s\n' "$*" >&2 || true; }
+fail()  { printf '[dart-lsp] ERROR: %s\n' "$*" >&2; }
+
+# --- SDK discovery ----------------------------------------------------------
+#
+# Sets DART_BIN (path to a runnable `dart` executable) on success.
+# Also sets FLUTTER_SDK_ROOT when the Dart SDK was resolved via Flutter.
+
+DART_BIN=""
+FLUTTER_SDK_ROOT=""
+
+discover_dart() {
+  # 1. Explicit standalone Dart SDK.
+  if [ -n "${DART_SDK:-}" ]; then
+    debug "DART_SDK is set: $DART_SDK"
+    if [ -x "$DART_SDK/bin/dart" ]; then
+      DART_BIN="$DART_SDK/bin/dart"
+      debug "using dart from DART_SDK"
+      return 0
+    fi
+    debug "DART_SDK set but \$DART_SDK/bin/dart is not executable"
+  else
+    debug "DART_SDK not set"
+  fi
+
+  # 2. Explicit Flutter SDK root -> its bundled Dart SDK.
+  if [ -n "${FLUTTER_ROOT:-}" ]; then
+    debug "FLUTTER_ROOT is set: $FLUTTER_ROOT"
+    local candidate="$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart"
+    if [ -x "$candidate" ]; then
+      DART_BIN="$candidate"
+      FLUTTER_SDK_ROOT="$FLUTTER_ROOT"
+      debug "using bundled dart from FLUTTER_ROOT"
+      return 0
+    fi
+    # Flutter also ships a `dart` shim under bin/ that resolves the cache.
+    if [ -x "$FLUTTER_ROOT/bin/dart" ]; then
+      DART_BIN="$FLUTTER_ROOT/bin/dart"
+      FLUTTER_SDK_ROOT="$FLUTTER_ROOT"
+      debug "using dart shim from FLUTTER_ROOT/bin"
+      return 0
+    fi
+    debug "FLUTTER_ROOT set but no usable dart under it"
+  else
+    debug "FLUTTER_ROOT not set"
+  fi
+
+  # 3. `dart` on PATH.
+  if command -v dart >/dev/null 2>&1; then
+    DART_BIN="$(command -v dart)"
+    debug "found dart on PATH: $DART_BIN"
+    return 0
+  fi
+  debug "dart not found on PATH"
+
+  # 4. `flutter` on PATH -> resolve its bundled Dart SDK.
+  if command -v flutter >/dev/null 2>&1; then
+    local flutter_bin flutter_real flutter_root
+    flutter_bin="$(command -v flutter)"
+    debug "found flutter on PATH: $flutter_bin"
+    # Resolve symlinks to locate the real SDK layout (…/flutter/bin/flutter).
+    flutter_real="$(resolve_link "$flutter_bin")"
+    flutter_root="$(cd "$(dirname "$flutter_real")/.." >/dev/null 2>&1 && pwd)"
+    debug "resolved FLUTTER root: $flutter_root"
+    local candidate="$flutter_root/bin/cache/dart-sdk/bin/dart"
+    if [ -x "$candidate" ]; then
+      DART_BIN="$candidate"
+      FLUTTER_SDK_ROOT="$flutter_root"
+      debug "using bundled dart from resolved flutter root"
+      return 0
+    fi
+    if [ -x "$flutter_root/bin/dart" ]; then
+      DART_BIN="$flutter_root/bin/dart"
+      FLUTTER_SDK_ROOT="$flutter_root"
+      debug "using dart shim from resolved flutter root"
+      return 0
+    fi
+    debug "flutter found but bundled dart missing (run 'flutter doctor' once to populate cache)"
+  else
+    debug "flutter not found on PATH"
+  fi
+
+  # 5. Common install locations (macOS / Linux).
+  local common_roots=(
+    "$HOME/flutter"
+    "$HOME/development/flutter"
+    "$HOME/src/flutter"
+    "$HOME/fvm/default"
+    "/opt/flutter"
+    "/usr/local/flutter"
+    "/opt/homebrew/bin"
+    "/usr/local/bin"
+  )
+  local root candidate
+  for root in "${common_roots[@]}"; do
+    debug "checking common location: $root"
+    # Flutter-style layout.
+    candidate="$root/bin/cache/dart-sdk/bin/dart"
+    if [ -x "$candidate" ]; then
+      DART_BIN="$candidate"
+      FLUTTER_SDK_ROOT="$root"
+      debug "using bundled dart from $root"
+      return 0
+    fi
+    # Bare dart executable (e.g. a bin dir).
+    if [ -x "$root/dart" ]; then
+      DART_BIN="$root/dart"
+      debug "using dart from $root"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Portable symlink resolver (avoids readlink -f, which is absent on macOS).
+resolve_link() {
+  local target="$1"
+  while [ -L "$target" ]; do
+    local link
+    link="$(readlink "$target")"
+    case "$link" in
+      /*) target="$link" ;;
+      *)  target="$(cd "$(dirname "$target")" >/dev/null 2>&1 && pwd)/$link" ;;
+    esac
+  done
+  printf '%s' "$target"
+}
+
+# --- main -------------------------------------------------------------------
+
+if ! discover_dart || [ -z "$DART_BIN" ]; then
+  fail "No usable Dart SDK found."
+  fail "Tried, in order:"
+  fail "  1. \$DART_SDK/bin/dart          (DART_SDK=${DART_SDK:-<unset>})"
+  fail "  2. \$FLUTTER_ROOT/.../dart       (FLUTTER_ROOT=${FLUTTER_ROOT:-<unset>})"
+  fail "  3. dart on PATH"
+  fail "  4. flutter on PATH -> bundled Dart SDK"
+  fail "  5. common install locations"
+  fail ""
+  fail "Fix: install the Dart SDK (https://dart.dev/get-dart) or Flutter"
+  fail "     (https://docs.flutter.dev/get-started/install), or set DART_SDK"
+  fail "     / FLUTTER_ROOT, or add 'dart' to your PATH. Then reload the plugin."
+  exit 1
+fi
+
+if [ "${DART_FLUTTER_LSP_DEBUG:-}" = "1" ]; then
+  debug "selected dart executable : $DART_BIN"
+  debug "selected flutter sdk root: ${FLUTTER_SDK_ROOT:-<none>}"
+  debug "current working directory: $(pwd)"
+  debug "command to exec          : $DART_BIN language-server --client-id $CLIENT_ID --client-version $CLIENT_VERSION"
+fi
+
+# Hand the process over to the Dart Analysis Server so it becomes the LSP
+# process talking stdio directly to Claude Code.
+exec "$DART_BIN" language-server \
+  --client-id "$CLIENT_ID" \
+  --client-version "$CLIENT_VERSION"

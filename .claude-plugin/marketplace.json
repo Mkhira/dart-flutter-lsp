@@ -1,0 +1,34 @@
+{
+  "name": "dart-flutter-marketplace",
+  "owner": {
+    "name": "Mohamed khira",
+    "email": "45259648+Mkhira@users.noreply.github.com"
+  },
+  "description": "Marketplace for the Dart & Flutter LSP plugin, which connects Claude Code to the official Dart Analysis Server.",
+  "metadata": {
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "dart-flutter-lsp",
+      "source": "./dart-flutter-lsp",
+      "displayName": "Dart & Flutter LSP",
+      "description": "Connects Claude Code to the official Dart Analysis Server LSP for Dart and Flutter projects (diagnostics, hover, go-to-definition, references, code actions, rename).",
+      "version": "0.1.0",
+      "author": {
+        "name": "Mohamed khira"
+      },
+      "homepage": "https://github.com/Mkhira/dart-flutter-lsp",
+      "repository": "https://github.com/Mkhira/dart-flutter-lsp",
+      "license": "MIT",
+      "category": "language-support",
+      "keywords": [
+        "dart",
+        "flutter",
+        "lsp",
+        "language-server",
+        "analysis-server"
+      ]
+    }
+  ]
+}
