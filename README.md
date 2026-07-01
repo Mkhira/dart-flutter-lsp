@@ -183,9 +183,9 @@ Run `dart-lsp-healthcheck` from your project root anytime to confirm your setup.
 
 The **[plugin README](./dart-flutter-lsp/README.md)** covers everything in depth:
 setup & installation options, `pub get`, generated code (`*.g.dart` / `*.freezed.dart`),
-framework lints via `custom_lint`, configuration & debug mode, the health check, a
-ready‑made [smoke‑test project](./dart-flutter-lsp/examples/smoke_test/), troubleshooting,
-monorepos, and Windows caveats.
+framework lints via `custom_lint`, configuration & debug mode, the health check and
+end‑to‑end self test, a ready‑made [smoke‑test project](./dart-flutter-lsp/examples/smoke_test/),
+troubleshooting, monorepos, and Windows caveats.
 
 ## 🗂️ Repository layout
 
