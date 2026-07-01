@@ -32,8 +32,10 @@ of truth.
 - [Health check & testing](#health-check--testing)
 - [Troubleshooting](#troubleshooting)
 - [Monorepos](#monorepos)
+- [Framework lints (BLoC, Riverpod, Provider, …)](#framework-lints-bloc-riverpod-provider-)
 - [Windows support](#windows-support)
 - [Scope — what it does *not* do](#scope--what-it-does-not-do)
+- [File structure](#file-structure)
 - [Reference](#reference)
 
 ---
@@ -334,7 +336,7 @@ claude plugin validate ./dart-flutter-lsp   # add --strict to fail on warnings
 | "Undefined" errors for generated symbols | Run your generator, e.g. `dart run build_runner build`. |
 | No diagnostics at all | You may have opened a subfolder instead of the project root (the folder with `pubspec.yaml`). Reopen the correct root. |
 | LSP handshake looks corrupted | Something wrote to stdout. Only the Dart server may write to stdout; keep all custom logging on stderr. |
-| Launcher "permission denied" | `chmod +x bin/dart-lsp bin/dart-lsp-healthcheck`. |
+| Launcher "permission denied" | `chmod +x bin/dart-lsp bin/dart-lsp-healthcheck bin/dart-lsp-selftest`. |
 | Flutter installed but Dart not found | Run `flutter doctor` once so Flutter populates `bin/cache/dart-sdk`. |
 | Changes to plugin files not taking effect | Run `/reload-plugins` or restart Claude Code. |
 
@@ -412,6 +414,8 @@ dart-flutter-lsp/
     dart-lsp             # POSIX launcher (SDK discovery + exec)
     dart-lsp.cmd         # Windows launcher
     dart-lsp-healthcheck # diagnostic report
+    dart-lsp-selftest    # end-to-end probe (wrapper)
+    lsp_selftest.dart    # end-to-end probe (LSP client)
   examples/
     smoke_test/          # ready-made verification project
   README.md
