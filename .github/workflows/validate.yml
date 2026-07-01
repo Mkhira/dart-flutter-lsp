@@ -22,8 +22,7 @@ jobs:
           for f in \
             .claude-plugin/marketplace.json \
             dart-flutter-lsp/.claude-plugin/plugin.json \
-            dart-flutter-lsp/.lsp.json \
-            dart-flutter-actions/.claude-plugin/plugin.json ; do
+            dart-flutter-lsp/.lsp.json ; do
             echo "checking $f"
             jq . "$f" > /dev/null
           done
@@ -50,7 +49,6 @@ jobs:
           scripts="
             dart-flutter-lsp/bin/dart-lsp
             dart-flutter-lsp/bin/dart-lsp-healthcheck
-            dart-flutter-actions/bin/dart-actions-mcp
           "
           for s in $scripts; do
             echo "== $s =="
@@ -65,7 +63,6 @@ jobs:
           expected="
             dart-flutter-lsp/bin/dart-lsp
             dart-flutter-lsp/bin/dart-lsp-healthcheck
-            dart-flutter-actions/bin/dart-actions-mcp
           "
           fail=0
           for f in $expected; do
@@ -79,13 +76,6 @@ jobs:
           done
           exit $fail
 
-      # --- Dart analyze the MCP server (no pub get; core-library script) ---
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-
-      - name: Analyze MCP server script
-        run: dart analyze dart-flutter-actions/server/dart_actions_server.dart
-
       # --- Claude Code CLI manifest + marketplace validation ---
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -95,8 +85,5 @@ jobs:
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Validate plugins (strict — fail on warnings)
-        run: |
-          set -euo pipefail
-          claude plugin validate ./dart-flutter-lsp --strict
-          claude plugin validate ./dart-flutter-actions --strict
+      - name: Validate plugin (strict — fail on warnings)
+        run: claude plugin validate ./dart-flutter-lsp --strict

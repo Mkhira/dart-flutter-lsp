@@ -6,7 +6,7 @@
     "email": "khaledkhaira@gmail.com",
     "url": "https://github.com/Mkhira"
   },
-  "description": "Marketplace for the Dart & Flutter LSP plugin (code intelligence) and its optional Actions MCP companion.",
+  "description": "Marketplace for the Dart & Flutter LSP plugin, which connects Claude Code to the official Dart Analysis Server.",
   "metadata": {
     "version": "0.1.0"
   },
@@ -30,27 +30,6 @@
         "lsp",
         "language-server",
         "analysis-server"
-      ]
-    },
-    {
-      "name": "dart-flutter-actions",
-      "source": "./dart-flutter-actions",
-      "displayName": "Dart & Flutter Actions (MCP)",
-      "description": "Optional, opt-in MCP companion: action tools that shell out to official Dart/Flutter tooling (pub get, build_runner, dart fix, melos). Installs disabled; enable to opt in.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Mohamed khira"
-      },
-      "homepage": "https://github.com/Mkhira/dart-flutter-lsp",
-      "repository": "https://github.com/Mkhira/dart-flutter-lsp",
-      "license": "MIT",
-      "category": "developer-tools",
-      "keywords": [
-        "dart",
-        "flutter",
-        "mcp",
-        "build_runner",
-        "melos"
       ]
     }
   ]
