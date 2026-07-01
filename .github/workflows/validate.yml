@@ -29,8 +29,20 @@ jobs:
           done
 
       # --- Shell launcher linting ---
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      # Pin shellcheck to the current release (0.11.0) rather than the older
+      # apt version. This is the version the launchers are validated against and
+      # keeps default severity ("treat findings as errors") — the older apt
+      # build flags a retired info check (SC2015) on an intentional
+      # `A && B || true` idiom in the launchers. This is a CI tool pin, not a
+      # distribution installer.
+      - name: Install shellcheck (pinned v0.11.0)
+        run: |
+          set -euo pipefail
+          ver="v0.11.0"
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/${ver}/shellcheck-${ver}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz
+          tar -xJf /tmp/shellcheck.tar.xz -C /tmp
+          sudo install "/tmp/shellcheck-${ver}/shellcheck" /usr/local/bin/shellcheck
+          shellcheck --version
 
       - name: bash -n (syntax) + shellcheck
         run: |
