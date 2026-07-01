@@ -1,0 +1,90 @@
+name: validate
+
+# Static validation only — this plugin has nothing to compile. Keeps the repo
+# submission-ready: manifest/marketplace validation, JSON well-formedness,
+# shell launcher linting, and executable-bit assertions.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- JSON well-formedness (runs even if the CLI step is unavailable) ---
+      - name: JSON well-formedness
+        run: |
+          set -euo pipefail
+          for f in \
+            .claude-plugin/marketplace.json \
+            dart-flutter-lsp/.claude-plugin/plugin.json \
+            dart-flutter-lsp/.lsp.json \
+            dart-flutter-actions/.claude-plugin/plugin.json ; do
+            echo "checking $f"
+            jq . "$f" > /dev/null
+          done
+
+      # --- Shell launcher linting ---
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: bash -n (syntax) + shellcheck
+        run: |
+          set -euo pipefail
+          scripts="
+            dart-flutter-lsp/bin/dart-lsp
+            dart-flutter-lsp/bin/dart-lsp-healthcheck
+            dart-flutter-actions/bin/dart-actions-mcp
+          "
+          for s in $scripts; do
+            echo "== $s =="
+            bash -n "$s"
+            shellcheck "$s"
+          done
+
+      # --- Executable-bit assertion (catches a lost +x before release) ---
+      - name: Assert launchers are mode 100755
+        run: |
+          set -euo pipefail
+          expected="
+            dart-flutter-lsp/bin/dart-lsp
+            dart-flutter-lsp/bin/dart-lsp-healthcheck
+            dart-flutter-actions/bin/dart-actions-mcp
+          "
+          fail=0
+          for f in $expected; do
+            mode="$(git ls-files -s "$f" | awk '{print $1}')"
+            if [ "$mode" != "100755" ]; then
+              echo "::error file=$f::expected mode 100755 but found '${mode:-<untracked>}'"
+              fail=1
+            else
+              echo "ok: $f is 100755"
+            fi
+          done
+          exit $fail
+
+      # --- Dart analyze the MCP server (no pub get; core-library script) ---
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Analyze MCP server script
+        run: dart analyze dart-flutter-actions/server/dart_actions_server.dart
+
+      # --- Claude Code CLI manifest + marketplace validation ---
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate plugins (strict — fail on warnings)
+        run: |
+          set -euo pipefail
+          claude plugin validate ./dart-flutter-lsp --strict
+          claude plugin validate ./dart-flutter-actions --strict

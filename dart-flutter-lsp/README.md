@@ -319,6 +319,36 @@ the **correct package root** for what you're editing, and running `pub get` in e
 you work in. For very large workspaces, consider `onlyAnalyzeProjectsWithOpenFiles: true` in
 `.lsp.json` (see [Configuration](#configuration)).
 
+## Framework lints (BLoC, Riverpod, Provider, …)
+
+Want framework‑specific lints — Riverpod, BLoC, or metrics like `dart_code_metrics`?
+**You don't add them here.** This plugin ships **no** lint rules of its own — baking them in
+would duplicate official packages, drift as they evolve, and add maintenance the thin‑wrapper
+design avoids. Use the idiomatic Dart path instead, and the lints flow through this plugin's
+existing LSP wiring with **zero changes**:
+
+1. Add the tooling to your project's `dev_dependencies`:
+   ```yaml
+   dev_dependencies:
+     custom_lint:
+     riverpod_lint:      # or bloc_lint, dart_code_metrics, etc.
+   ```
+2. Enable the `custom_lint` analyzer plugin in `analysis_options.yaml`:
+   ```yaml
+   analyzer:
+     plugins:
+       - custom_lint
+   ```
+3. Run `dart pub get`.
+
+The **official Dart Analysis Server** loads `custom_lint` automatically, so those rules show
+up as ordinary diagnostics — which this plugin already forwards into Claude Code. Nothing to
+configure on the plugin side.
+
+> **Out of scope, on purpose.** In‑plugin framework lint rules are explicitly not something
+> this plugin does. The Dart Analysis Server stays the single source of truth for what counts
+> as a lint; your project's `analysis_options.yaml` + `custom_lint` decides the rules.
+
 ## Windows support
 
 Windows is **best‑effort for v0.1**.

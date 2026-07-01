@@ -1,0 +1,27 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "dart-flutter-actions",
+  "displayName": "Dart & Flutter Actions (MCP)",
+  "version": "0.1.0",
+  "description": "Optional, opt-in MCP companion to dart-flutter-lsp. Exposes a small set of action tools that shell out to official Dart/Flutter tooling (pub get, build_runner, dart fix, melos). No analysis logic — LSP handles code intelligence.",
+  "author": {
+    "name": "Mohamed khira"
+  },
+  "homepage": "https://github.com/Mkhira/dart-flutter-lsp",
+  "repository": "https://github.com/Mkhira/dart-flutter-lsp",
+  "license": "MIT",
+  "keywords": [
+    "dart",
+    "flutter",
+    "mcp",
+    "build_runner",
+    "melos"
+  ],
+  "defaultEnabled": false,
+  "mcpServers": {
+    "dart-flutter-actions": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/dart-actions-mcp",
+      "args": []
+    }
+  }
+}
