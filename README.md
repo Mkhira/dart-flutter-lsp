@@ -29,9 +29,12 @@ troubleshooting, `pub get`, generated-code, Windows, and monorepo notes.
 
 ## What you get
 
-Diagnostics, hover/type info, go-to-definition, find-references, document & workspace
-symbols, code actions (quick-fixes), and rename — all powered by the official Dart
-Analysis Server.
+Diagnostics (auto-injected), hover/type info, go-to-definition, go-to-implementation,
+find-references, document & workspace symbols, and call hierarchy — the LSP operations
+Claude Code exposes, all powered by the official Dart Analysis Server.
+
+> The Dart server also supports rename, code actions, and signature help, but Claude
+> Code's `LSP` tool doesn't surface those yet ([claude-code#40282](https://github.com/anthropics/claude-code/issues/40282)) — the plugin gains them automatically once it does.
 
 ## Layout
 

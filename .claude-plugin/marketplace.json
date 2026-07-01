@@ -15,7 +15,7 @@
       "name": "dart-flutter-lsp",
       "source": "./dart-flutter-lsp",
       "displayName": "Dart & Flutter LSP",
-      "description": "Connects Claude Code to the official Dart Analysis Server LSP for Dart and Flutter projects (diagnostics, hover, go-to-definition, references, code actions, rename).",
+      "description": "Connects Claude Code to the official Dart Analysis Server LSP for Dart and Flutter projects: auto-injected diagnostics plus hover, go-to-definition, go-to-implementation, find-references, document/workspace symbols, and call hierarchy.",
       "version": "0.1.0",
       "author": {
         "name": "Mohamed khira"

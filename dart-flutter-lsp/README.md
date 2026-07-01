@@ -48,11 +48,11 @@ Real things it makes possible:
 
 | You ask… | What the plugin enables |
 | --- | --- |
-| *"Fix the errors in this widget."* | Claude reads the **actual analyzer diagnostics** (exact line, code, message) and fixes precisely those — no guessing. |
-| *"Rename `UserRepository` to `AccountRepository` everywhere."* | A **semantic, project‑wide rename** — declaration, imports, usages, even doc‑comment references — without touching a same‑named local variable. |
-| *"Where does `context.read<CartBloc>()` resolve to?"* | **Hover + go‑to‑definition** answer from resolved types, not from how Bloc "usually" works. |
+| *"Fix the errors in this widget."* | Claude reads the **auto‑injected analyzer diagnostics** (exact line, code, message) and fixes precisely those — no guessing. |
+| *"Rename `UserRepository` to `AccountRepository`."* | Claude uses **find‑references** to locate every usage (including doc‑comment references), then edits each site — semantic accuracy instead of a fragile grep. |
+| *"Where does `context.read<CartBloc>()` resolve to?"* | **Hover** and **go‑to‑definition** answer from resolved types, not from how Bloc "usually" works. |
 | *"Is `calculateTotal()` used anywhere before I change it?"* | **Find‑references** lists every real call site so the change stays consistent. |
-| *"`int count = getName();` is erroring — fix it."* | The server offers **intent‑aware quick‑fixes** (change type vs. add cast) with exact edits; Claude picks the right one. |
+| *"Who calls `processPayment()`, and what does it call?"* | **Call hierarchy** (incoming/outgoing calls) maps the call graph in both directions. |
 | *"Why are my imports red?"* | Claude sees the real `uri_does_not_exist` diagnostic and tells you the cause (*run `pub get`*) instead of rewriting working code. |
 
 The theme: Claude Code's edits become **accurate and self‑correcting** — after each change the
@@ -61,14 +61,26 @@ the app.
 
 ## What you get
 
-Once enabled, opening a Dart/Flutter project gives Claude Code LSP‑powered:
+Once enabled, opening a Dart/Flutter project gives Claude Code:
 
-- 🔎 **Diagnostics** — errors, warnings, and lints as you edit
-- 🧠 **Hover / type info** — signatures and docs on demand
-- ↪️ **Go to definition** & **find references**
-- 🗂️ **Document & workspace symbols**
-- 🛠️ **Code actions** — quick‑fixes (insert `;`, change type, add cast, import, …)
-- ✏️ **Rename** — semantic and project‑wide
+- 🔎 **Diagnostics** — errors, warnings, and lints, **pushed into context automatically** after each edit (no tool call needed)
+- 🧠 **Hover** — types and docs at a position
+- ↪️ **Go to definition** and **go to implementation**
+- 🔗 **Find references** — every usage of a symbol
+- 🗂️ **Document symbols** and **workspace symbol** search
+- 📞 **Call hierarchy** — incoming/outgoing calls
+
+The nine navigation operations above are reached through Claude Code's built‑in `LSP`
+tool; diagnostics arrive automatically.
+
+> **What Claude Code doesn't expose (yet).** The Dart server *also* supports **rename**,
+> **code actions / quick‑fixes**, and **signature help**, but Claude Code's `LSP` tool
+> doesn't surface those operations today (tracked in
+> [claude-code#40282](https://github.com/anthropics/claude-code/issues/40282)). This is a
+> Claude Code client limitation, **not** a limitation of this plugin or the Dart server —
+> when Claude Code exposes more operations, this plugin gains them for free. In the
+> meantime Claude still fixes errors from the auto‑injected diagnostics by editing
+> directly, and performs symbol‑wide renames by combining **find references** with edits.
 
 > **LSP vs MCP** — LSP is *code intelligence*; MCP is *agent tools/actions*. This plugin is
 > **LSP‑only** and needs no MCP. Dart/Flutter also offer a separate, optional
