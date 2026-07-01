@@ -74,34 +74,70 @@ Opening a Dart/Flutter project gives Claude Code:
 
 ## 🚀 Install
 
+### 1 · Prerequisites
+
+- **[Claude Code](https://code.claude.com)** installed
+- A **Dart** or **Flutter** SDK on your machine (the plugin auto‑discovers it) —
+  [Get Dart](https://dart.dev/get-dart) · [Get Flutter](https://docs.flutter.dev/get-started/install)
+
+There is **no** language server to install separately — `dart language-server` ships inside
+the Dart SDK.
+
+### 2 · Add the marketplace and install the plugin
+
 ```bash
 claude plugin marketplace add Mkhira/dart-flutter-lsp
 claude plugin install dart-flutter-lsp@dart-flutter-marketplace
 ```
 
+The plugin installs at **user scope** and is enabled immediately. Confirm it:
+
+```bash
+claude plugin list          # → dart-flutter-lsp@dart-flutter-marketplace  ✔ enabled
+```
+
+### 3 · Prepare your project
+
+```bash
+dart pub get                # or: flutter pub get   (required — resolves packages)
+```
+
+### 4 · Use it
+
+Open the **project root** (the folder containing `pubspec.yaml`) in Claude Code, then open or
+edit a `.dart` file — code intelligence turns on automatically. No configuration needed.
+
+Verify your environment anytime with the bundled health check:
+
+```bash
+dart-lsp-healthcheck        # available as a bare command once the plugin is enabled
+```
+
+> [!TIP]
+> The language server starts on `.dart` **file activity**, not when the session opens. Touch a
+> `.dart` file to warm it up; until then Claude Code may fall back to text search.
+
 <details>
-<summary>Or try it without installing (from a clone)</summary>
+<summary>💻 Alternative — run without installing (from a clone)</summary>
 
 ```bash
 git clone https://github.com/Mkhira/dart-flutter-lsp.git
 claude --plugin-dir ./dart-flutter-lsp/dart-flutter-lsp
 ```
-Edits to the folder take effect after `/reload-plugins` — handy for hacking on it.
+Loads the plugin for one session directly from the folder. Edits take effect after
+`/reload-plugins` — handy for hacking on it.
 </details>
 
-Then, in your project:
+<details>
+<summary>🔧 Manage / update / uninstall</summary>
 
 ```bash
-dart pub get        # or: flutter pub get   (required — resolves packages)
+claude plugin list                                              # status
+claude plugin marketplace update dart-flutter-marketplace       # pull the latest
+claude plugin uninstall dart-flutter-lsp@dart-flutter-marketplace
+claude plugin marketplace remove dart-flutter-marketplace
 ```
-
-Open the **project root** (the folder with `pubspec.yaml`) in Claude Code, then open or edit
-a `.dart` file. That's it — no language server to install separately (it ships with the Dart
-SDK), and zero configuration.
-
-> [!TIP]
-> The language server starts on `.dart` **file activity**, not when the session opens. Touch
-> a `.dart` file to warm it up; until then Claude Code may fall back to text search.
+</details>
 
 ## 💡 Use cases
 
