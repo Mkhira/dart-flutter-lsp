@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dart-flutter-lsp",
   "displayName": "Dart & Flutter LSP",
   "version": "0.1.0",

@@ -1,0 +1,6 @@
+# Present so the health check reports analysis_options.yaml and so the analyzer
+# demonstrates lint-driven diagnostics/code actions in addition to type errors.
+linter:
+  rules:
+    - prefer_final_locals
+    - unnecessary_new

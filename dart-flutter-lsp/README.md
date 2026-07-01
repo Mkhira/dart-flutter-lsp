@@ -185,12 +185,18 @@ If none are found, it prints a clear message **to stderr** and exits non‑zero.
 
 ### Tuning `initializationOptions`
 
-`.lsp.json` passes a few Dart‑specific options. They are safe defaults but tunable:
+`.lsp.json` passes a few Dart‑specific options:
 
 ```jsonc
 "initializationOptions": {
-  "onlyAnalyzeProjectsWithOpenFiles": false, // full-workspace analysis
-  "suggestFromUnimportedLibraries": true,
+  // These two actually change analysis behavior in Claude Code:
+  "onlyAnalyzeProjectsWithOpenFiles": false, // false = full-workspace analysis
+  "suggestFromUnimportedLibraries": true,    // completions from unimported libs
+
+  // The three below only ask the server to emit extra UI notifications
+  // (dart/textDocument/publishClosingLabels, publishOutline, publishFlutterOutline).
+  // They are INERT unless the LSP *client* renders them — Claude Code does not,
+  // so these are no-ops today. Kept true for forward-compat with clients that do.
   "closingLabels": true,
   "outline": true,
   "flutterOutline": true

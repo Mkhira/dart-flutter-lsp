@@ -1,9 +1,10 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "dart-flutter-marketplace",
   "owner": {
     "name": "Mohamed khira",
     "email": "khaledkhaira@gmail.com",
-    "phone": "+966550493860"
+    "url": "https://github.com/Mkhira"
   },
   "description": "Marketplace for the Dart & Flutter LSP plugin, which connects Claude Code to the official Dart Analysis Server.",
   "metadata": {

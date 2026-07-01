@@ -7,6 +7,5 @@
 build/
 pubspec.lock
 
-# Local-only: example project and the internal build brief (not shipped)
-dart-flutter-lsp/examples/
+# Local-only: the internal build brief (not shipped)
 DART_FLUTTER_LSP_PLUGIN_BRIEF.md
