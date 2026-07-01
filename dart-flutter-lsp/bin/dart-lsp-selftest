@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+#
+# dart-lsp-selftest — end-to-end integration probe for the dart-flutter-lsp
+# plugin. It launches the real `bin/dart-lsp` launcher over LSP stdio and
+# verifies the analysis-server handshake AND that diagnostics actually flow,
+# against a real Dart/Flutter project.
+#
+# Usage:
+#   dart-lsp-selftest [PROJECT_DIR]      # defaults to the current directory
+#
+# Unlike bin/dart-lsp this is NOT an LSP transport process, so it prints a
+# human-readable report to stdout. Exit codes: 0 = passed, 1 = a check failed,
+# 2 = could not start (no SDK / not a project).
+#
+# It needs a Dart SDK only to RUN the probe client (bin/lsp_selftest.dart);
+# the launcher it spawns does its own SDK discovery for the server process.
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+CLIENT="$SCRIPT_DIR/lsp_selftest.dart"
+
+fail() { printf '[dart-lsp-selftest] ERROR: %s\n' "$*" >&2; }
+
+# Portable symlink resolver (readlink -f is absent on macOS).
+resolve_link() {
+  local target="$1" link
+  while [ -L "$target" ]; do
+    link="$(readlink "$target")"
+    case "$link" in
+      /*) target="$link" ;;
+      *)  target="$(cd "$(dirname "$target")" >/dev/null 2>&1 && pwd)/$link" ;;
+    esac
+  done
+  printf '%s' "$target"
+}
+
+# Discover a `dart` to run the probe client with. Mirrors the launcher's
+# primary resolution order (DART_SDK -> FLUTTER_ROOT -> PATH -> flutter).
+discover_dart() {
+  if [ -n "${DART_SDK:-}" ] && [ -x "$DART_SDK/bin/dart" ]; then
+    printf '%s' "$DART_SDK/bin/dart"; return 0
+  fi
+  if [ -n "${FLUTTER_ROOT:-}" ]; then
+    if [ -x "$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart" ]; then
+      printf '%s' "$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart"; return 0
+    fi
+    if [ -x "$FLUTTER_ROOT/bin/dart" ]; then
+      printf '%s' "$FLUTTER_ROOT/bin/dart"; return 0
+    fi
+  fi
+  if command -v dart >/dev/null 2>&1; then
+    command -v dart; return 0
+  fi
+  if command -v flutter >/dev/null 2>&1; then
+    local flutter_real flutter_root
+    flutter_real="$(resolve_link "$(command -v flutter)")"
+    flutter_root="$(cd "$(dirname "$flutter_real")/.." >/dev/null 2>&1 && pwd)"
+    if [ -x "$flutter_root/bin/cache/dart-sdk/bin/dart" ]; then
+      printf '%s' "$flutter_root/bin/cache/dart-sdk/bin/dart"; return 0
+    fi
+    if [ -x "$flutter_root/bin/dart" ]; then
+      printf '%s' "$flutter_root/bin/dart"; return 0
+    fi
+  fi
+  return 1
+}
+
+if [ ! -f "$CLIENT" ]; then
+  fail "probe client missing: $CLIENT"
+  exit 2
+fi
+
+DART_BIN="$(discover_dart)" || {
+  fail "No usable Dart SDK found to run the self test."
+  fail "Install Dart/Flutter or set DART_SDK / FLUTTER_ROOT, then retry."
+  fail "Run 'dart-lsp-healthcheck' for a full diagnostic report."
+  exit 2
+}
+
+exec "$DART_BIN" "$CLIENT" "$@"

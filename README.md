@@ -107,11 +107,16 @@ dart pub get                # or: flutter pub get   (required — resolves packa
 Open the **project root** (the folder containing `pubspec.yaml`) in Claude Code, then open or
 edit a `.dart` file — code intelligence turns on automatically. No configuration needed.
 
-Verify your environment anytime with the bundled health check:
+Verify your environment anytime with the bundled tools:
 
 ```bash
-dart-lsp-healthcheck        # available as a bare command once the plugin is enabled
+dart-lsp-healthcheck                       # checks your setup (SDK, PATH, project files)
+dart-lsp-selftest /path/to/flutter/project # proves it end-to-end: real handshake + diagnostics
 ```
+
+Both are bare commands once the plugin is enabled. The self test is the surest confirmation a
+project will get live diagnostics — it drives the launcher through a real LSP handshake and a
+diagnostics round‑trip before you even restart Claude Code.
 
 > [!TIP]
 > The language server starts on `.dart` **file activity**, not when the session opens. Touch a
@@ -192,7 +197,7 @@ monorepos, and Windows caveats.
 └── dart-flutter-lsp/             # the plugin
     ├── .claude-plugin/plugin.json
     ├── .lsp.json                 # maps .dart → dart language server
-    ├── bin/                      # dart-lsp launcher · healthcheck · Windows .cmd
+    ├── bin/                      # dart-lsp launcher · healthcheck · selftest · Windows .cmd
     ├── examples/smoke_test/      # ready-made verification project
     └── README.md                 # full documentation
 ```

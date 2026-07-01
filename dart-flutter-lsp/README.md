@@ -141,8 +141,9 @@ This loads the plugin for a single session directly from the folder — handy fo
 or developing it. Edits to the folder take effect after `/reload-plugins`.
 
 > On macOS/Linux the launchers in `bin/` must stay executable. They ship with the correct
-> bits; if a copy strips them, run `chmod +x bin/dart-lsp bin/dart-lsp-healthcheck` — the
-> health check will flag this.
+> bits; if a copy strips them, run
+> `chmod +x bin/dart-lsp bin/dart-lsp-healthcheck bin/dart-lsp-selftest` — the health check
+> will flag this.
 
 ## Usage
 
@@ -198,6 +199,9 @@ Claude Code  ──LSP/stdio──▶  bin/dart-lsp  ──exec──▶  dart l
   `dart language-server` so the Dart process *becomes* the LSP process.
 - **`bin/dart-lsp.cmd`** — Windows launcher (see [Windows](#windows-support)).
 - **`bin/dart-lsp-healthcheck`** — prints a diagnostic report (safe to run anytime).
+- **`bin/dart-lsp-selftest`** + **`bin/lsp_selftest.dart`** — end‑to‑end integration probe:
+  drives the launcher through a real LSP handshake **and** a diagnostics round‑trip against a
+  project (see [Self test](#self-test)).
 
 ### SDK discovery order
 
@@ -271,6 +275,30 @@ is startable.
 > The command is deliberately named `dart-lsp-healthcheck` (not `healthcheck`): plugin `bin/`
 > files are added to the Bash tool's `PATH` while the plugin is enabled, so a generic name
 > would risk collisions.
+
+### Self test
+
+Where the health check inspects your *setup*, the self test proves the plugin actually
+**works end‑to‑end** — it launches the real `bin/dart-lsp` over LSP stdio (exactly as Claude
+Code does) and checks two things against a project you point it at:
+
+1. **Handshake** — the Dart Analysis Server completes `initialize` and advertises the
+   capabilities the plugin relies on (diagnostics, hover, definition, implementation,
+   references, document/workspace symbols, call hierarchy).
+2. **Diagnostics** — it opens an in‑memory Dart file containing a deliberate type error and
+   confirms the server pushes back `publishDiagnostics`. Nothing is written to your project.
+
+```bash
+# point it at a real Dart/Flutter project (defaults to the current directory):
+dart-lsp-selftest /path/to/your/flutter/project
+# or from inside the project:
+cd /path/to/your/flutter/project && dart-lsp-selftest
+```
+
+Exit codes: `0` = all checks passed, `1` = a check failed, `2` = couldn't start (no SDK, or
+the target isn't a project). It only needs a Dart SDK to *run* the probe; the launcher it
+spawns does its own SDK discovery for the server. This is the fastest way to confirm a
+project will get live diagnostics **before** restarting Claude Code with the plugin enabled.
 
 ### Ready-made smoke test
 

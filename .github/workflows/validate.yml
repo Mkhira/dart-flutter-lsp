@@ -49,6 +49,7 @@ jobs:
           scripts="
             dart-flutter-lsp/bin/dart-lsp
             dart-flutter-lsp/bin/dart-lsp-healthcheck
+            dart-flutter-lsp/bin/dart-lsp-selftest
           "
           for s in $scripts; do
             echo "== $s =="
@@ -63,6 +64,7 @@ jobs:
           expected="
             dart-flutter-lsp/bin/dart-lsp
             dart-flutter-lsp/bin/dart-lsp-healthcheck
+            dart-flutter-lsp/bin/dart-lsp-selftest
           "
           fail=0
           for f in $expected; do
